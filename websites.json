@@ -1,0 +1,669 @@
+[
+  {
+    "name": "Vibhum",
+    "url": "https://vibhumsoftware.com/",
+    "id": 1757927254063,
+    "status": "up",
+    "uptime": 80.0,
+    "code": 200,
+    "responseHistory": [
+      {
+        "time": "2025-09-16 14:37:44",
+        "ms": 0,
+        "code": 0,
+        "error": "Connection Error"
+      },
+      {
+        "time": "2025-09-16 14:37:45",
+        "ms": 0,
+        "code": 0,
+        "error": "Connection Error"
+      },
+      {
+        "time": "2025-09-16 14:40:01",
+        "ms": 1422,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:41:22",
+        "ms": 1423,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:42:25",
+        "ms": 1605,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:43:39",
+        "ms": 1576,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:44:51",
+        "ms": 1423,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:46:25",
+        "ms": 1545,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:47:26",
+        "ms": 1472,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:47:36",
+        "ms": 1460,
+        "code": 200,
+        "error": "OK"
+      }
+    ],
+    "lastChecked": "2025-09-16 14:47:36",
+    "auto_monitor": true,
+    "avg_response_time": 2050.6428571428573,
+    "downtime_count": 0,
+    "ssl_info": {
+      "valid": true,
+      "expires_at": "2025-10-28T09:24:38",
+      "days_left": 42
+    },
+    "notifications_enabled": true,
+    "uptime_7d": 100.0,
+    "uptime_30d": 100.0
+  },
+  {
+    "name": "vhum",
+    "url": "https://dfdf.com",
+    "auto_monitor": true,
+    "notifications_enabled": true,
+    "id": 1757928971164,
+    "status": "down",
+    "uptime": 0.0,
+    "responseHistory": [
+      {
+        "time": "2025-09-16 14:37:44",
+        "ms": 0,
+        "code": 0,
+        "error": "Connection Error"
+      },
+      {
+        "time": "2025-09-16 14:37:45",
+        "ms": 0,
+        "code": 0,
+        "error": "Connection Error"
+      },
+      {
+        "time": "2025-09-16 14:40:01",
+        "ms": 0,
+        "code": 0,
+        "error": "Connection Error"
+      },
+      {
+        "time": "2025-09-16 14:41:22",
+        "ms": 0,
+        "code": 0,
+        "error": "Connection Error"
+      },
+      {
+        "time": "2025-09-16 14:42:25",
+        "ms": 0,
+        "code": 0,
+        "error": "Connection Error"
+      },
+      {
+        "time": "2025-09-16 14:43:39",
+        "ms": 0,
+        "code": 0,
+        "error": "Connection Error"
+      },
+      {
+        "time": "2025-09-16 14:44:51",
+        "ms": 0,
+        "code": 0,
+        "error": "Connection Error"
+      },
+      {
+        "time": "2025-09-16 14:46:25",
+        "ms": 0,
+        "code": 0,
+        "error": "Connection Error"
+      },
+      {
+        "time": "2025-09-16 14:47:26",
+        "ms": 0,
+        "code": 0,
+        "error": "Connection Error"
+      },
+      {
+        "time": "2025-09-16 14:47:36",
+        "ms": 0,
+        "code": 0,
+        "error": "Connection Error"
+      }
+    ],
+    "lastChecked": "2025-09-16 14:47:36",
+    "ssl_info": null,
+    "avg_response_time": null,
+    "downtime_count": 14,
+    "uptime_7d": 0.0,
+    "uptime_30d": 0.0
+  },
+  {
+    "name": "asad",
+    "url": "https://asaad.com",
+    "auto_monitor": true,
+    "notifications_enabled": false,
+    "id": 1757931352425,
+    "status": "down",
+    "uptime": 0.0,
+    "responseHistory": [
+      {
+        "time": "2025-09-16 14:43:44",
+        "ms": 0,
+        "code": 0,
+        "error": "Timeout"
+      },
+      {
+        "time": "2025-09-16 14:44:45",
+        "ms": 0,
+        "code": 0,
+        "error": "Timeout"
+      },
+      {
+        "time": "2025-09-16 14:44:56",
+        "ms": 0,
+        "code": 0,
+        "error": "Timeout"
+      },
+      {
+        "time": "2025-09-16 14:45:27",
+        "ms": 0,
+        "code": 0,
+        "error": "Timeout"
+      },
+      {
+        "time": "2025-09-16 14:46:30",
+        "ms": 0,
+        "code": 0,
+        "error": "Timeout"
+      },
+      {
+        "time": "2025-09-16 14:46:41",
+        "ms": 0,
+        "code": 0,
+        "error": "Timeout"
+      },
+      {
+        "time": "2025-09-16 14:47:17",
+        "ms": 0,
+        "code": 0,
+        "error": "Timeout"
+      },
+      {
+        "time": "2025-09-16 14:47:31",
+        "ms": 0,
+        "code": 0,
+        "error": "Timeout"
+      },
+      {
+        "time": "2025-09-16 14:47:41",
+        "ms": 0,
+        "code": 0,
+        "error": "Timeout"
+      },
+      {
+        "time": "2025-09-16 14:48:31",
+        "ms": 0,
+        "code": 0,
+        "error": "Timeout"
+      }
+    ],
+    "lastChecked": "2025-09-16 14:48:31",
+    "ssl_info": null,
+    "avg_response_time": null,
+    "downtime_count": 14,
+    "uptime_7d": 0.0,
+    "uptime_30d": 0.0
+  },
+  {
+    "name": "Hostel Duniya",
+    "url": "https://hostelduniya.com/",
+    "auto_monitor": true,
+    "notifications_enabled": false,
+    "id": 1757931505383,
+    "status": "down",
+    "uptime": 40.0,
+    "responseHistory": [
+      {
+        "time": "2025-09-16 14:42:35",
+        "ms": 5461,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:42:51",
+        "ms": 0,
+        "code": 0,
+        "error": "Connection Error"
+      },
+      {
+        "time": "2025-09-16 14:43:47",
+        "ms": 3013,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:44:09",
+        "ms": 0,
+        "code": 0,
+        "error": "Timeout"
+      },
+      {
+        "time": "2025-09-16 14:45:08",
+        "ms": 0,
+        "code": 0,
+        "error": "Connection Error"
+      },
+      {
+        "time": "2025-09-16 14:46:05",
+        "ms": 0,
+        "code": 0,
+        "error": "Timeout"
+      },
+      {
+        "time": "2025-09-16 14:46:33",
+        "ms": 2054,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:47:31",
+        "ms": 0,
+        "code": 0,
+        "error": "Connection Error"
+      },
+      {
+        "time": "2025-09-16 14:47:44",
+        "ms": 2845,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:47:55",
+        "ms": 0,
+        "code": 0,
+        "error": "Connection Error"
+      }
+    ],
+    "lastChecked": "2025-09-16 14:47:55",
+    "ssl_info": null,
+    "avg_response_time": 7763.142857142857,
+    "downtime_count": 4,
+    "uptime_7d": 63.64,
+    "uptime_30d": 63.64
+  },
+  {
+    "name": "RK Urban Construction",
+    "url": "https://rkurbanconstruction.com/",
+    "auto_monitor": true,
+    "notifications_enabled": false,
+    "id": 1757931531519,
+    "status": "up",
+    "uptime": 80.0,
+    "responseHistory": [
+      {
+        "time": "2025-09-16 14:37:44",
+        "ms": 0,
+        "code": 0,
+        "error": "Connection Error"
+      },
+      {
+        "time": "2025-09-16 14:37:45",
+        "ms": 0,
+        "code": 0,
+        "error": "Connection Error"
+      },
+      {
+        "time": "2025-09-16 14:40:20",
+        "ms": 1197,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:41:37",
+        "ms": 1073,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:42:37",
+        "ms": 1250,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:43:49",
+        "ms": 1608,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:45:10",
+        "ms": 1918,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:46:34",
+        "ms": 1120,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:47:32",
+        "ms": 1445,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:47:45",
+        "ms": 1233,
+        "code": 200,
+        "error": "OK"
+      }
+    ],
+    "lastChecked": "2025-09-16 14:47:45",
+    "ssl_info": {
+      "valid": true,
+      "expires_at": "2025-12-09T09:00:35",
+      "days_left": 84
+    },
+    "avg_response_time": 1807.076923076923,
+    "downtime_count": 1,
+    "uptime_7d": 92.86,
+    "uptime_30d": 92.86
+  },
+  {
+    "name": "SKYCUT",
+    "url": "https://skycut.in/",
+    "auto_monitor": true,
+    "notifications_enabled": false,
+    "id": 1757931593019,
+    "status": "up",
+    "uptime": 80.0,
+    "responseHistory": [
+      {
+        "time": "2025-09-16 14:37:45",
+        "ms": 0,
+        "code": 0,
+        "error": "Connection Error"
+      },
+      {
+        "time": "2025-09-16 14:37:45",
+        "ms": 0,
+        "code": 0,
+        "error": "Connection Error"
+      },
+      {
+        "time": "2025-09-16 14:40:21",
+        "ms": 746,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:41:37",
+        "ms": 767,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:42:37",
+        "ms": 693,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:43:49",
+        "ms": 780,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:45:11",
+        "ms": 722,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:46:34",
+        "ms": 728,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:47:33",
+        "ms": 822,
+        "code": 200,
+        "error": "OK"
+      },
+      {
+        "time": "2025-09-16 14:47:46",
+        "ms": 775,
+        "code": 200,
+        "error": "OK"
+      }
+    ],
+    "lastChecked": "2025-09-16 14:47:46",
+    "ssl_info": {
+      "valid": true,
+      "expires_at": "2025-11-08T22:46:26",
+      "days_left": 54
+    },
+    "avg_response_time": 1294.5714285714287,
+    "downtime_count": 0,
+    "uptime_7d": 100.0,
+    "uptime_30d": 100.0
+  },
+  {
+    "name": "SKYCUT INDIA",
+    "url": "https://skycutindia.com/",
+    "auto_monitor": false,
+    "notifications_enabled": false,
+    "id": 1757936474725,
+    "status": "up",
+    "uptime": 50.0,
+    "responseHistory": [
+      {
+        "time": "2025-09-15 17:24:15",
+        "ms": 1166,
+        "code": 200,
+        "error": null
+      },
+      {
+        "time": "2025-09-15 17:34:36",
+        "ms": 1338,
+        "code": 200,
+        "error": null
+      },
+      {
+        "time": "2025-09-15 17:54:58",
+        "ms": 1203,
+        "code": 200,
+        "error": null
+      },
+      {
+        "time": "2025-09-15 17:56:11",
+        "ms": 1233,
+        "code": 200,
+        "error": null
+      },
+      {
+        "time": "2025-09-16 12:02:46",
+        "ms": 0,
+        "code": "Timeout",
+        "error": "Request timed out"
+      },
+      {
+        "time": "2025-09-16 12:03:02",
+        "ms": 0,
+        "code": "Timeout",
+        "error": "Request timed out"
+      },
+      {
+        "time": "2025-09-16 12:03:58",
+        "ms": 0,
+        "code": "Timeout",
+        "error": "Request timed out"
+      },
+      {
+        "time": "2025-09-16 12:05:32",
+        "ms": 0,
+        "code": "Timeout",
+        "error": "Request timed out"
+      },
+      {
+        "time": "2025-09-16 12:07:22",
+        "ms": 0,
+        "code": "Timeout",
+        "error": "Request timed out"
+      },
+      {
+        "time": "2025-09-16 13:44:50",
+        "ms": 1295,
+        "code": 200,
+        "error": null
+      }
+    ],
+    "lastChecked": "2025-09-16 13:44:50"
+  },
+  {
+    "name": "Ishan Builders",
+    "url": "https://ishanbuilders.com/",
+    "auto_monitor": false,
+    "notifications_enabled": false,
+    "id": 1757936578290,
+    "status": "down",
+    "uptime": 50.0,
+    "responseHistory": [
+      {
+        "time": "2025-09-16 12:04:01",
+        "ms": 1529,
+        "code": 200,
+        "error": null
+      },
+      {
+        "time": "2025-09-16 12:05:45",
+        "ms": 0,
+        "code": "ConnectionError",
+        "error": "Failed to connect"
+      },
+      {
+        "time": "2025-09-16 12:05:54",
+        "ms": 1556,
+        "code": 200,
+        "error": null
+      },
+      {
+        "time": "2025-09-16 12:09:22",
+        "ms": 0,
+        "code": "ConnectionError",
+        "error": "Failed to connect"
+      },
+      {
+        "time": "2025-09-16 12:09:31",
+        "ms": 1487,
+        "code": 200,
+        "error": null
+      },
+      {
+        "time": "2025-09-16 12:33:16",
+        "ms": 1528,
+        "code": 200,
+        "error": null
+      },
+      {
+        "time": "2025-09-16 14:25:23",
+        "ms": 2285,
+        "code": 200,
+        "error": null
+      },
+      {
+        "time": "2025-09-16 14:28:39",
+        "ms": 0,
+        "code": "ConnectionError",
+        "error": "Failed to connect"
+      },
+      {
+        "time": "2025-09-16 14:33:35",
+        "ms": 0,
+        "code": 0,
+        "error": "Connection Error"
+      },
+      {
+        "time": "2025-09-16 14:37:45",
+        "ms": 0,
+        "code": 0,
+        "error": "Connection Error"
+      }
+    ],
+    "lastChecked": "2025-09-16 14:37:45"
+  },
+  {
+    "name": "Shri Hit",
+    "url": "https://shrihitgyanwati.vibhumsoftware.com/",
+    "auto_monitor": false,
+    "notifications_enabled": false,
+    "id": 1757936781087,
+    "status": "down",
+    "uptime": 83.33,
+    "responseHistory": [
+      {
+        "time": "2025-09-15 17:16:26",
+        "ms": 1201,
+        "code": 200,
+        "error": null
+      },
+      {
+        "time": "2025-09-15 17:17:27",
+        "ms": 1177,
+        "code": 200,
+        "error": null
+      },
+      {
+        "time": "2025-09-15 17:17:39",
+        "ms": 1198,
+        "code": 200,
+        "error": null
+      },
+      {
+        "time": "2025-09-15 17:46:45",
+        "ms": 967,
+        "code": 200,
+        "error": null
+      },
+      {
+        "time": "2025-09-15 17:56:13",
+        "ms": 837,
+        "code": 200,
+        "error": null
+      },
+      {
+        "time": "2025-09-16 14:37:45",
+        "ms": 0,
+        "code": 0,
+        "error": "Connection Error"
+      }
+    ],
+    "lastChecked": "2025-09-16 14:37:45"
+  }
+]
