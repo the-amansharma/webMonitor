@@ -14,11 +14,14 @@
 ## Features ✨
 
 - Monitor multiple websites simultaneously  
+- Add multiple websites easily  
 - Track uptime and response time  
 - Interactive charts for website metrics  
 - Configurable monitoring interval  
 - Lightweight, easy to set up  
-- Error handling for unreachable websites  
+- Sound / desktop notifications for downtime or status changes  
+- Error handling for unreachable websites
+  
 
 ---
 
@@ -33,12 +36,13 @@
 
 ## Architecture 🏗️
 
-+----------------+ +----------------+ +----------------+
-| | | | | |
-| React UI | <----> | Flask API | <----> | websites.json |
-| (Frontend) | | (Backend) | | (Data Storage) |
-| | | | | |
-+----------------+ +----------------+ +----------------+
++----------------+        +----------------+        +----------------+
+|                |        |                |        |                |
+|   React UI     | <----> |   Flask API    | <----> | websites.json  |
+|  (Frontend)    |        |  (Backend)     |        |  (Data Storage)|
+|                |        |                |        |                |
++----------------+        +----------------+        +----------------+
+
 
 - **Frontend** handles user interactions and visualizations.  
 - **Backend** handles periodic website checks, uptime tracking, and serves API endpoints.  
@@ -53,28 +57,31 @@
 ```bash
 git clone https://github.com/the-amansharma/webMonitor.git
 cd webMonitor
+```
 
 ### 2. Backend Setup
+```
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
 python app.py
-
+```
 
 Backend runs on http://127.0.0.1:5000.
 
 ### 3. Frontend Setup
+```
 cd frontend
 npm install
 npm start
-
+```
 
 Frontend runs on http://localhost:3000 and connects to the backend.
 
 ### 4. Configuration
 
 All monitored websites are stored in websites.json:
-
+```
 [
   {
     "id": 1,
@@ -83,7 +90,7 @@ All monitored websites are stored in websites.json:
     "interval": 60
   }
 ]
-
+```
 
 interval = monitoring frequency in seconds.
 
@@ -94,20 +101,21 @@ Live URL: https://webmonitor-owjq.onrender.com/
 Ensure websites.json exists in backend root.
 
 Use Gunicorn for production Flask deployment:
-
+```
 gunicorn app:app --bind 0.0.0.0:5000
-
+```
 
 Build React frontend:
-
+```
 npm run build
+```
 
 ## Future Improvements 🌟
 
-Persistent database storage (PostgreSQL / MongoDB)
+- Persistent database storage (PostgreSQL / MongoDB)
 
-User authentication and dashboards
+- User authentication and dashboards
 
-Alerts via email/SMS for downtime
+- Alerts via email/SMS for downtime
 
-Historical trends and analytics
+- Historical trends and analytics
