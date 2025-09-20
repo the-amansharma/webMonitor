@@ -140,7 +140,7 @@ export default function App() {
   return (
     <div className="min-h-screen flex bg-gray-50">
       <ToastContainer position="top-right" autoClose={3000} />
-      <Sidebar />
+     <Sidebar/>
       <div className="flex-1 p-6">
         <Topbar onAddClick={openAdd} notifyDelay={notifyDelay} setNotifyDelay={setNotifyDelay}>
           <div className="flex items-center gap-4">
