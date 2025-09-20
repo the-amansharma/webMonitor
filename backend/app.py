@@ -15,7 +15,7 @@ import socket
 app = Flask(__name__)
 CORS(app)  # Allow all origins
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = "/opt/render"
 DATA_FILE = os.path.join(BASE_DIR, "websites.json")
 
 lock = Lock()
