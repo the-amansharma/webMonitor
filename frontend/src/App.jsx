@@ -7,7 +7,7 @@ import SiteCard from "./components/SiteCard";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const API = "https://webmonitor-backend.onrender.com";
+const API = "https://webmonitor-backend-uokw.onrender.com";
 
 export default function App() {
   const [sites, setSites] = useState([]);
