@@ -187,31 +187,55 @@ def background_monitor():
 def get_websites():
     return jsonify(load_data())
 
-@app.route("/websites", methods=["POST"])
+@app.route("/api/websites", methods=["POST"])
 def add_website():
-    data = load_data()
-    new_site = request.json
-    new_site["id"] = int(time.time() * 1000)
-    new_site["status"] = "unknown"
-    new_site["uptime"] = 100
-    new_site["responseHistory"] = []
-    new_site["lastChecked"] = None
-    new_site["auto_monitor"] = True
-    new_site["notifications_enabled"] = False
-    new_site.setdefault("interval", DEFAULT_INTERVAL)
-
-    data.append(new_site)
-    save_data(data)
-
-    # ----------------- Immediate First Check -----------------
     try:
-        perform_site_check(new_site)
-        save_data(data)
-    except Exception as e:
-        print(f"Initial check failed for {new_site['url']}: {e}")
-    # ---------------------------------------------------------
+        # Validate request body
+        if not request.is_json:
+            return jsonify({"error": "Invalid request, JSON expected"}), 400
 
-    return jsonify(new_site), 201
+        new_site = request.get_json()
+
+        # Basic validation: must contain a URL
+        if "url" not in new_site or not new_site["url"].strip():
+            return jsonify({"error": "Missing or empty 'url' field"}), 400
+
+        # Load existing data
+        try:
+            data = load_data()
+        except Exception as e:
+            return jsonify({"error": f"Failed to load data: {str(e)}"}), 500
+
+        # Assign defaults
+        new_site["id"] = int(time.time() * 1000)
+        new_site["status"] = "unknown"
+        new_site["uptime"] = 100
+        new_site["responseHistory"] = []
+        new_site["lastChecked"] = None
+        new_site["auto_monitor"] = True
+        new_site["notifications_enabled"] = False
+        new_site.setdefault("interval", DEFAULT_INTERVAL)
+
+        data.append(new_site)
+
+        try:
+            save_data(data)
+        except Exception as e:
+            return jsonify({"error": f"Failed to save data: {str(e)}"}), 500
+
+        # Immediate first check (non-blocking errors handled separately)
+        try:
+            perform_site_check(new_site)
+            save_data(data)
+        except Exception as e:
+            # Log but don’t fail the request
+            print(f"Initial check failed for {new_site['url']}: {e}")
+
+        return jsonify(new_site), 201
+
+    except Exception as e:
+        # Catch-all for unexpected errors
+        return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
 
 
 @app.route("/websites/<int:site_id>", methods=["PUT"])
@@ -224,17 +248,27 @@ def update_website(site_id):
             return jsonify(site)
     return jsonify({"error": "Not found"}), 404
 
-@app.route("/websites/<int:site_id>", methods=["DELETE"])
+# ------------------ DELETE Site ------------------
+@app.route("/websites/<site_id>", methods=["DELETE"])
 def delete_website(site_id):
-    with open("websites.json", "r") as f:
-        sites = json.load(f)
+    """
+    Delete a site by ID.
+    Handles both string and integer IDs safely.
+    Returns 404 if site not found.
+    """
+    with lock:
+        sites = load_data()
+        # Filter out the site to delete
+        new_sites = [s for s in sites if str(s.get("id")) != str(site_id)]
 
-    sites = [s for s in sites if s["id"] != site_id]
+        if len(sites) == len(new_sites):
+            # No site was removed
+            return jsonify({"error": "Site not found"}), 404
 
-    with open("websites.json", "w") as f:
-        json.dump(sites, f, indent=2)
+        save_data(new_sites)
 
-    return jsonify({"message": "Deleted", "sites": sites})
+    return jsonify({"message": f"Deleted site {site_id}", "sites": new_sites})
+
 
 
 @app.route("/check/<int:site_id>", methods=["POST"])
