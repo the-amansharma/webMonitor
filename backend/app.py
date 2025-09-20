@@ -207,6 +207,7 @@ def add_website():
         new_site = {
             "id": int(time.time() * 1000),
             "url": body["url"],
+            "name": body.get("name", ""),  # ✅ keep name if provided
             "status": "unknown",
             "uptime": 100,
             "responseHistory": [],
@@ -215,6 +216,11 @@ def add_website():
             "notifications_enabled": False,
             "interval": body.get("interval", DEFAULT_INTERVAL)
         }
+
+        # keep any extra fields user passes (optional)
+        for key in body:
+            if key not in new_site:
+                new_site[key] = body[key]
 
         data.append(new_site)
         save_data(data)
