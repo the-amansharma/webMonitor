@@ -17,19 +17,37 @@ export default function SiteCard({
   onDelete,
   onManualCheck,
   onToggleNotifications,
+  lastResponse, // passed from App.jsx
 }) {
-  // Get last 10 responses safely
   const last10 = site.responseHistory?.slice(-10) || [];
-  const lastCheck = last10[last10.length - 1] || {};
+  const last = lastResponse || last10[last10.length - 1] || {};
 
+  // Status colors
+  const statusColorMap = {
+    up: "bg-green-100",
+    high_latency: "bg-yellow-100",
+    down: "bg-red-100",
+  };
+  const textColorMap = {
+    up: "text-green-700",
+    high_latency: "text-yellow-700",
+    down: "text-red-700",
+  };
+
+  // Chart data
   const data = {
-    labels: last10.map((r) => (r.time ? r.time.split(" ")[1] : "—")), // Show HH:MM:SS
+    labels: last10.map((r) => (r.time ? r.time.split(" ")[1] : "—")),
     datasets: [
       {
         label: "Response (ms)",
         data: last10.map((r) => (typeof r.ms === "number" ? r.ms : null)),
         fill: false,
-        borderColor: site.status === "down" ? "#f87171" : "#4ade80",
+        borderColor:
+          site.status === "down"
+            ? "#f87171"
+            : site.status === "high_latency"
+            ? "#facc15"
+            : "#4ade80",
         tension: 0.3,
       },
     ],
@@ -45,19 +63,36 @@ export default function SiteCard({
     },
   };
 
-  // Helper for displaying error code + message
-  const formatError = (last) => {
-    if (!last) return "N/A";
-    if (last.code && last.code !== 0) {
-      return `HTTP ${last.code} (${last.error || "Unknown Error"})`;
+  // Format error based on status
+  const formatError = (resp) => {
+    if (!resp) return "N/A";
+
+    if (site.status === "down") {
+      if (resp.error && resp.error.toLowerCase().includes("http")) {
+        return resp.error; // Already contains HTTP info
+      }
+      return resp.code && resp.code !== 0
+        ? `HTTP ${resp.code}`
+        : resp.error || "Unknown Error";
     }
-    return last.error || "N/A";
+
+    if (site.status === "high_latency") {
+      return "Slow Resonse";
+    }
+
+    return "N/A";
   };
+
+  // Status label
+  const statusLabel =
+    site.status === "high_latency"
+      ? "UP (HIGH LATENCY)"
+      : site.status?.toUpperCase() || "N/A";
 
   return (
     <div
       className={`p-4 rounded-lg shadow transition-colors ${
-        site.status === "down" ? "bg-red-100" : "bg-green-100"
+        statusColorMap[site.status]
       }`}
     >
       {/* Header */}
@@ -77,24 +112,20 @@ export default function SiteCard({
       <p className="text-sm text-gray-700 mb-1">{site.url}</p>
       <p className="text-sm mb-1">
         Status:{" "}
-        <span
-          className={
-            site.status === "down"
-              ? "text-red-700 font-semibold"
-              : "text-green-700 font-semibold"
-          }
-        >
-          {site.status?.toUpperCase() || "N/A"}
+        <span className={`font-semibold ${textColorMap[site.status]}`}>
+          {statusLabel}
         </span>
       </p>
       <p className="text-sm mb-1">Last Checked: {site.lastChecked ?? "—"}</p>
       <p className="text-sm mb-1">
-        Response: {lastCheck.ms ? `${lastCheck.ms} ms` : "N/A"}
+        Response: {last.ms ? `${last.ms} ms` : "N/A"}
       </p>
 
       {/* Error details */}
-      {site.status === "down" && (
-        <p className="text-sm text-red-700 mb-2">Error: {formatError(lastCheck)}</p>
+      {site.status !== "up" && (
+        <p className="text-sm font-medium mb-2 text-red-700">
+          Error: {formatError(last)}
+        </p>
       )}
 
       {/* Chart */}
@@ -118,7 +149,9 @@ export default function SiteCard({
               : "bg-gray-200 text-gray-500"
           }`}
         >
-          {site.notifications_enabled ? "🔔 Notifications ON" : "🔕 Notifications OFF"}
+          {site.notifications_enabled
+            ? "🔔 Notifications ON"
+            : "🔕 Notifications OFF"}
         </button>
       </div>
     </div>

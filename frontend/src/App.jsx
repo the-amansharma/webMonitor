@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import Sidebar from "./components/Sidebar";
 import Topbar from "./components/Topbar";
@@ -16,7 +16,10 @@ export default function App() {
   const [editingSite, setEditingSite] = useState(null);
   const [autoMonitoring, setAutoMonitoring] = useState(true);
   const [intervalTime, setIntervalTime] = useState(60);
-  const [notifyDelay, setNotifyDelay] = useState(5); // default 5 minutes
+  const [notifyDelay, setNotifyDelay] = useState(5);
+  const [soundOn, setSoundOn] = useState(false);
+
+  const audioRef = useRef(null);
 
   // Fetch all sites
   const loadSites = async () => {
@@ -36,7 +39,7 @@ export default function App() {
     loadSites();
   }, []);
 
-  // Manual site check (shows toast)
+  // Manual site check
   const onManualCheck = async (id, manual = true) => {
     try {
       const res = await axios.post(`${API}/check/${id}`);
@@ -51,14 +54,20 @@ export default function App() {
     }
   };
 
-  // Auto monitoring → only one toast per cycle
+  // Auto monitoring
   useEffect(() => {
     if (!autoMonitoring) return;
+
     const id = setInterval(async () => {
       try {
+        // Get latest sites from backend
+        const res = await axios.get(`${API}/websites`);
+        const currentSites = res.data;
+
         await Promise.all(
-          sites.map((site) => onManualCheck(site.id, false)) // no toast per site
+          currentSites.map((site) => onManualCheck(site.id, false))
         );
+        setSites(currentSites); // update state
         toast.info("Auto-monitor cycle completed");
       } catch (err) {
         console.error("Auto-monitor failed", err);
@@ -67,7 +76,22 @@ export default function App() {
     }, intervalTime * 1000);
 
     return () => clearInterval(id);
-  }, [autoMonitoring, intervalTime, sites]);
+  }, [autoMonitoring, intervalTime]);
+
+
+  // Sound alert logic (using <audio ref>)
+  useEffect(() => {
+    if (!audioRef.current) return;
+
+    const downCount = sites.filter((s) => s.status === "down").length;
+
+    if (soundOn && downCount > 0) {
+      audioRef.current.play().catch((err) => console.error("Audio play failed:", err));
+    } else {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+  }, [sites, soundOn]);
 
   const openAdd = () => {
     setEditingSite(null);
@@ -96,7 +120,6 @@ export default function App() {
     }
   };
 
-  // Toggle notifications
   const onToggleNotifications = async (site) => {
     try {
       const res = await axios.put(`${API}/websites/${site.id}`, {
@@ -119,19 +142,13 @@ export default function App() {
       <ToastContainer position="top-right" autoClose={3000} />
       <Sidebar />
       <div className="flex-1 p-6">
-        <Topbar
-          onAddClick={openAdd}
-          notifyDelay={notifyDelay}
-          setNotifyDelay={setNotifyDelay}
-        >
+        <Topbar onAddClick={openAdd} notifyDelay={notifyDelay} setNotifyDelay={setNotifyDelay}>
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium">Auto Monitoring:</span>
             <button
               onClick={() => setAutoMonitoring(!autoMonitoring)}
               className={`px-3 py-1 rounded-full text-sm font-medium ${
-                autoMonitoring
-                  ? "bg-green-100 text-green-700"
-                  : "bg-red-100 text-red-700"
+                autoMonitoring ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
               }`}
             >
               {autoMonitoring ? "ON" : "OFF"}
@@ -150,26 +167,37 @@ export default function App() {
                 <option value={3600}>1h</option>
               </select>
             )}
+
+            {/* Sound Alert Toggle */}
+            <span className="text-sm font-medium">Sound Alert:</span>
+            <button
+              onClick={() => setSoundOn(!soundOn)}
+              className={`px-3 py-1 rounded-full text-sm font-medium ${
+                soundOn ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-600"
+              }`}
+            >
+              {soundOn ? "ON" : "OFF"}
+            </button>
           </div>
         </Topbar>
 
+        {/* Hidden looping audio */}
+        <audio ref={audioRef} loop>
+          <source src="/alert.mp3" type="audio/mpeg" />
+        </audio>
+
         {/* Summary Cards */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Total Sites */}
           <div className="p-4 bg-white rounded-lg shadow-sm">
             <div className="text-sm text-slate-500">Total Sites</div>
             <div className="mt-2 text-3xl font-semibold">{sites.length}</div>
           </div>
-
-          {/* Sites Down */}
           <div className="p-4 bg-white rounded-lg shadow-sm">
             <div className="text-sm text-slate-500">Sites Down</div>
             <div className="mt-2 text-3xl font-semibold">
               {sites.filter((s) => s.status === "down").length}
             </div>
           </div>
-
-          {/* Slowest Site */}
           <div className="p-4 bg-white rounded-lg shadow-sm">
             <div className="text-sm text-slate-500">Slowest Site</div>
             <div className="mt-2 text-3xl font-semibold">
@@ -177,17 +205,12 @@ export default function App() {
                 ? "—"
                 : sites.reduce((slowest, s) => {
                     const avg = s.responseHistory?.length
-                      ? s.responseHistory.reduce((a, r) => a + r.ms, 0) /
-                        s.responseHistory.length
+                      ? s.responseHistory.reduce((a, r) => a + r.ms, 0) / s.responseHistory.length
                       : 0;
-                    return avg > (slowest.avg || 0)
-                      ? { name: s.name, avg }
-                      : slowest;
+                    return avg > (slowest.avg || 0) ? { name: s.name, avg } : slowest;
                   }, {}).name || "—"}
             </div>
           </div>
-
-          {/* Average Response Time */}
           <div className="p-4 bg-white rounded-lg shadow-sm">
             <div className="text-sm text-slate-500">Avg Response Time</div>
             <div className="mt-2 text-3xl font-semibold">
@@ -196,13 +219,10 @@ export default function App() {
                 : `${(
                     sites.reduce((total, s) => {
                       const avg = s.responseHistory?.length
-                        ? s.responseHistory.reduce((a, r) => a + r.ms, 0) /
-                          s.responseHistory.length
+                        ? s.responseHistory.reduce((a, r) => a + r.ms, 0) / s.responseHistory.length
                         : 0;
                       return total + avg;
-                    }, 0) /
-                    sites.length /
-                    1000
+                    }, 0) / sites.length / 1000
                   ).toFixed(2)} s`}
             </div>
           </div>
@@ -211,9 +231,7 @@ export default function App() {
         {/* Sites Down Alerts */}
         {sites.some((s) => s.status === "down") && (
           <div className="mt-6 bg-red-50 p-4 rounded-xl shadow border-l-4 border-red-500">
-            <h2 className="text-lg font-semibold text-red-700 mb-3">
-              Sites Down
-            </h2>
+            <h2 className="text-lg font-semibold text-red-700 mb-3">Sites Down</h2>
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-gray-600">
@@ -237,7 +255,7 @@ export default function App() {
                         <td>{last.ms ? `${last.ms} ms` : "—"}</td>
                         <td>
                           {last.code && last.code !== 0
-                            ? `HTTP ${last.code} (${last.error})`
+                            ? `(${last.error})`
                             : last.error || "N/A"}
                         </td>
                       </tr>
@@ -255,18 +273,15 @@ export default function App() {
             sites
               .slice()
               .sort((a, b) => {
-                // Down sites first
-                if (a.status === "down" && b.status !== "down") return -1;
-                if (a.status !== "down" && b.status === "down") return 1;
-
-                // Slowest sites first
+                const order = { down: 0, high_latency: 1, degraded: 1, unknown: 2, up: 3 };
+                const priorityA = order[a.status] ?? 4;
+                const priorityB = order[b.status] ?? 4;
+                if (priorityA !== priorityB) return priorityA - priorityB;
                 const avgA = a.responseHistory?.length
-                  ? a.responseHistory.reduce((sum, r) => sum + r.ms, 0) /
-                    a.responseHistory.length
+                  ? a.responseHistory.reduce((sum, r) => sum + r.ms, 0) / a.responseHistory.length
                   : 0;
                 const avgB = b.responseHistory?.length
-                  ? b.responseHistory.reduce((sum, r) => sum + r.ms, 0) /
-                    b.responseHistory.length
+                  ? b.responseHistory.reduce((sum, r) => sum + r.ms, 0) / b.responseHistory.length
                   : 0;
                 return avgB - avgA;
               })
@@ -278,9 +293,6 @@ export default function App() {
                   onDelete={() => onDelete(site.id)}
                   onManualCheck={() => onManualCheck(site.id, true)}
                   onToggleNotifications={() => onToggleNotifications(site)}
-                  className={`${
-                    site.status === "down" ? "bg-red-100" : "bg-green-100"
-                  }`}
                 />
               ))}
         </div>
