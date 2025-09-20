@@ -10,6 +10,7 @@ from datetime import datetime
 from http.client import responses
 from concurrent.futures import ThreadPoolExecutor
 import socket
+from urllib.parse import urlparse
 
 # ------------------ App Setup ------------------
 app = Flask(__name__)
@@ -28,25 +29,36 @@ MAX_RETRIES = 2          # Retry attempts for failures
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; WebMonitor/1.0)"}  # Avoid blocks
 
 # Ensure JSON file exists
+os.makedirs(BASE_DIR, exist_ok=True)
 if not os.path.exists(DATA_FILE):
     with open(DATA_FILE, "w") as f:
         json.dump([], f, indent=2)
 
-# ------------------ JSON Helper ------------------
+
+# ------------------ JSON Helpers ------------------
 def load_data():
-    with lock:
-        with open(DATA_FILE, "r") as f:
+    """Safely load sites JSON data."""
+    try:
+        with lock, open(DATA_FILE, "r") as f:
             return json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError):
+        return []
+    except Exception as e:
+        raise RuntimeError(f"Failed to load data: {str(e)}")
 
 
 def save_data(data):
-    with lock:
-        with open(DATA_FILE, "w") as f:
+    """Safely save sites JSON data."""
+    try:
+        with lock, open(DATA_FILE, "w") as f:
             json.dump(data, f, indent=2)
+    except Exception as e:
+        raise RuntimeError(f"Failed to save data: {str(e)}")
+
 
 # ------------------ Website Check ------------------
 def check_website(url, retries=MAX_RETRIES, timeout=15):
-    """Check website with retries and return human-readable status."""
+    """Check website with retries and return structured result."""
     for attempt in range(retries):
         try:
             start = time.time()
@@ -54,36 +66,23 @@ def check_website(url, retries=MAX_RETRIES, timeout=15):
             elapsed = int((time.time() - start) * 1000)
 
             # Status classification
-            if res.status_code >= 500:
+            if res.status_code >= 400:
                 status = "down"
-            elif res.status_code >= 400:
-                status = "down"
-            elif res.status_code >= 300:
-                status = "high_latency"
             elif elapsed > DEGRADED_MS:
                 status = "high_latency"
             else:
                 status = "up"
 
-            # Human-readable error message
-            if status == "up":
-                error_msg = responses.get(res.status_code, "OK")
-            elif status == "high_latency":
-                error_msg = responses.get(res.status_code, "OK")
-            else:  # down
-                error_msg = f"HTTP {res.status_code} (Error)" if res.status_code else "Down"
-
             return {
                 "status": status,
                 "response_time": elapsed,
                 "code": res.status_code,
-                "error": error_msg
+                "error": responses.get(res.status_code, "OK")
             }
 
         except requests.exceptions.Timeout:
             if attempt == retries - 1:
                 return {"status": "down", "response_time": 0, "code": 0, "error": "Timeout"}
-            time.sleep(1)
 
         except requests.exceptions.SSLError:
             return {"status": "down", "response_time": 0, "code": 0, "error": "SSL Error"}
@@ -91,10 +90,9 @@ def check_website(url, retries=MAX_RETRIES, timeout=15):
         except requests.exceptions.TooManyRedirects:
             return {"status": "down", "response_time": 0, "code": 0, "error": "Too Many Redirects"}
 
-        except requests.exceptions.ConnectionError as e:
+        except requests.exceptions.ConnectionError:
             if attempt == retries - 1:
-                return {"status": "down", "response_time": 0, "code": 0, "error": "Connection Failed / Max Retries Exceeded"}
-            time.sleep(1)
+                return {"status": "down", "response_time": 0, "code": 0, "error": "Connection Failed"}
 
         except socket.gaierror:
             return {"status": "down", "response_time": 0, "code": 0, "error": "DNS Resolution Failed"}
@@ -102,29 +100,24 @@ def check_website(url, retries=MAX_RETRIES, timeout=15):
         except Exception as e:
             return {"status": "down", "response_time": 0, "code": 0, "error": f"Unknown Error: {str(e)}"}
 
+    return {"status": "down", "response_time": 0, "code": 0, "error": "Unreachable"}
+
 
 # ------------------ Uptime Calculation ------------------
 def update_stats(site):
-    """Calculate uptime % based on total response duration."""
     history = site.get("responseHistory", [])
     if not history:
         site["uptime"] = 100
         return
 
-    total_time = 0
-    up_time = 0
-    for h in history:
-        elapsed = h.get("response_time", 0) or 1
-        total_time += elapsed
-        if h.get("status") == "up":
-            up_time += elapsed
+    total_time = sum(h.get("response_time", 1) or 1 for h in history)
+    up_time = sum(h.get("response_time", 1) or 1 for h in history if h.get("status") == "up")
 
     site["uptime"] = round((up_time / total_time) * 100, 2) if total_time else 100
 
+
 # ------------------ Perform Single Site Check ------------------
 def perform_site_check(site):
-    """Check a single site and update history/status."""
-    interval = site.get("interval", DEFAULT_INTERVAL)
     result = check_website(site["url"])
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -140,157 +133,164 @@ def perform_site_check(site):
         "error": result["error"]
     })
 
-    # Keep rolling history cap
     if len(site["responseHistory"]) > MAX_HISTORY:
         site["responseHistory"] = site["responseHistory"][-MAX_HISTORY:]
 
     update_stats(site)
 
+
 # ------------------ Background Monitor ------------------
 def background_monitor():
-    """Monitor all sites concurrently and handle per-site intervals."""
-    last_checked_times = {}  # Track last check time per site
+    last_checked_times = {}
 
     while True:
-        data = load_data()
-        now = time.time()
-        changed = False
+        try:
+            data = load_data()
+            now = time.time()
+            changed = False
 
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = []
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                futures = []
+                for site in data:
+                    if not site.get("auto_monitor", True):
+                        continue
 
-            for site in data:
-                if not site.get("auto_monitor", True):
-                    continue
+                    interval = site.get("interval", DEFAULT_INTERVAL)
+                    last_checked = last_checked_times.get(site["id"], 0)
 
-                interval = site.get("interval", DEFAULT_INTERVAL)
-                last_checked = last_checked_times.get(site["id"], 0)
+                    if now - last_checked >= interval:
+                        futures.append(executor.submit(perform_site_check, site))
+                        last_checked_times[site["id"]] = now
 
-                # Only check if enough time has passed
-                if now - last_checked >= interval:
-                    futures.append(executor.submit(perform_site_check, site))
-                    last_checked_times[site["id"]] = now
+                for future in futures:
+                    future.result()
+                    changed = True
 
-            for future in futures:
-                future.result()
-                changed = True
+            if changed:
+                save_data(data)
 
-        if changed:
-            save_data(data)
+        except Exception as e:
+            print(f"[Monitor Error] {str(e)}")
 
-        # Sleep a short time to avoid busy loop
         time.sleep(5)
+
+
+# ------------------ Validators ------------------
+def validate_url(url):
+    try:
+        parsed = urlparse(url)
+        return all([parsed.scheme in ("http", "https"), parsed.netloc])
+    except Exception:
+        return False
 
 
 # ------------------ API Routes ------------------
 @app.route("/websites", methods=["GET"])
 def get_websites():
-    return jsonify(load_data())
+    try:
+        return jsonify(load_data())
+    except Exception as e:
+        return jsonify({"error": "Failed to fetch websites", "details": str(e)}), 500
 
-@app.route("/api/websites", methods=["POST"])
+
+@app.route("/websites", methods=["POST"])
 def add_website():
     try:
-        # Validate request body
-        if not request.is_json:
-            return jsonify({"error": "Invalid request, JSON expected"}), 400
+        body = request.json
+        if not body or "url" not in body:
+            return jsonify({"error": "Missing required field 'url'"}), 400
 
-        new_site = request.get_json()
+        if not validate_url(body["url"]):
+            return jsonify({"error": "Invalid URL format"}), 400
 
-        # Basic validation: must contain a URL
-        if "url" not in new_site or not new_site["url"].strip():
-            return jsonify({"error": "Missing or empty 'url' field"}), 400
-
-        # Load existing data
-        try:
-            data = load_data()
-        except Exception as e:
-            return jsonify({"error": f"Failed to load data: {str(e)}"}), 500
-
-        # Assign defaults
-        new_site["id"] = int(time.time() * 1000)
-        new_site["status"] = "unknown"
-        new_site["uptime"] = 100
-        new_site["responseHistory"] = []
-        new_site["lastChecked"] = None
-        new_site["auto_monitor"] = True
-        new_site["notifications_enabled"] = False
-        new_site.setdefault("interval", DEFAULT_INTERVAL)
+        data = load_data()
+        new_site = {
+            "id": int(time.time() * 1000),
+            "url": body["url"],
+            "status": "unknown",
+            "uptime": 100,
+            "responseHistory": [],
+            "lastChecked": None,
+            "auto_monitor": True,
+            "notifications_enabled": False,
+            "interval": body.get("interval", DEFAULT_INTERVAL)
+        }
 
         data.append(new_site)
+        save_data(data)
 
-        try:
-            save_data(data)
-        except Exception as e:
-            return jsonify({"error": f"Failed to save data: {str(e)}"}), 500
-
-        # Immediate first check (non-blocking errors handled separately)
         try:
             perform_site_check(new_site)
             save_data(data)
         except Exception as e:
-            # Log but don’t fail the request
             print(f"Initial check failed for {new_site['url']}: {e}")
 
         return jsonify(new_site), 201
 
     except Exception as e:
-        # Catch-all for unexpected errors
-        return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
+        return jsonify({"error": "Failed to add website", "details": str(e)}), 500
 
 
 @app.route("/websites/<int:site_id>", methods=["PUT"])
 def update_website(site_id):
-    data = load_data()
-    for site in data:
-        if site["id"] == site_id:
-            site.update(request.json)
-            save_data(data)
-            return jsonify(site)
-    return jsonify({"error": "Not found"}), 404
+    try:
+        updates = request.json or {}
+        data = load_data()
+        for site in data:
+            if site["id"] == site_id:
+                site.update(updates)
+                save_data(data)
+                return jsonify(site)
+        return jsonify({"error": "Site not found"}), 404
+    except Exception as e:
+        return jsonify({"error": "Failed to update site", "details": str(e)}), 500
 
-# ------------------ DELETE Site ------------------
+
 @app.route("/websites/<site_id>", methods=["DELETE"])
 def delete_website(site_id):
-    """
-    Delete a site by ID.
-    Handles both string and integer IDs safely.
-    Returns 404 if site not found.
-    """
-    with lock:
+    try:
         sites = load_data()
-        # Filter out the site to delete
         new_sites = [s for s in sites if str(s.get("id")) != str(site_id)]
 
         if len(sites) == len(new_sites):
-            # No site was removed
             return jsonify({"error": "Site not found"}), 404
 
         save_data(new_sites)
-
-    return jsonify({"message": f"Deleted site {site_id}", "sites": new_sites})
-
+        return jsonify({"message": f"Deleted site {site_id}", "sites": new_sites})
+    except Exception as e:
+        return jsonify({"error": "Failed to delete site", "details": str(e)}), 500
 
 
 @app.route("/check/<int:site_id>", methods=["POST"])
 def manual_check(site_id):
-    data = load_data()
-    for site in data:
-        if site["id"] == site_id:
-            perform_site_check(site)
-            save_data(data)
-            return jsonify(site)
-    return jsonify({"error": "Not found"}), 404
+    try:
+        data = load_data()
+        for site in data:
+            if site["id"] == site_id:
+                perform_site_check(site)
+                save_data(data)
+                return jsonify(site)
+        return jsonify({"error": "Site not found"}), 404
+    except Exception as e:
+        return jsonify({"error": "Manual check failed", "details": str(e)}), 500
+
+
+# ------------------ Global Error Handlers ------------------
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify({"error": "Route not found"}), 404
+
+@app.errorhandler(405)
+def method_not_allowed(e):
+    return jsonify({"error": "Method not allowed"}), 405
+
+@app.errorhandler(500)
+def internal_error(e):
+    return jsonify({"error": "Internal server error", "details": str(e)}), 500
+
 
 # ------------------ Start App ------------------
 if __name__ == "__main__":
-    import os
-
-    # Start the background monitor thread
     threading.Thread(target=background_monitor, daemon=True).start()
-
-    # Get port from environment (Render) or default to 5000 for local testing
     port = int(os.environ.get("PORT", 5000))
-    
-    # Run Flask
-    app.run(host="0.0.0.0", port=port)  # remove debug=True for production
-
+    app.run(host="0.0.0.0", port=port)
