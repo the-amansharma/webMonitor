@@ -119,7 +119,8 @@ def update_stats(site):
 # ------------------ Perform Single Site Check ------------------
 def perform_site_check(site):
     result = check_website(site["url"])
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ist = pytz.timezone("Asia/Kolkata")
+    now = datetime.now(ist).strftime("%Y-%m-%d %H:%M:%S")
 
     site["status"] = result["status"]
     site["lastChecked"] = now
@@ -137,6 +138,7 @@ def perform_site_check(site):
         site["responseHistory"] = site["responseHistory"][-MAX_HISTORY:]
 
     update_stats(site)
+
 
 
 # ------------------ Background Monitor ------------------
