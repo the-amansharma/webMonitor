@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, } from "react";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -11,18 +11,14 @@ import {
 
 ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Tooltip);
 
-export default function SiteCard({
-  site,
-  onEdit,
-  onDelete,
-  onManualCheck,
-  onToggleNotifications,
-  lastResponse, // passed from App.jsx
-}) {
-  const last10 = site.responseHistory?.slice(-10) || [];
-  const last = lastResponse || last10[last10.length - 1] || {};
+export default function SiteCard({ site, onEdit, onDelete, onManualCheck }) {
+  const [notificationsEnabled, setNotificationsEnabled] = useState(
+    JSON.parse(localStorage.getItem(`notify_${site.id}`)) ?? site.notifications_enabled
+  );
 
-  // Status colors
+  const last10 = site.responseHistory?.slice(-10) || [];
+  const last = last10[last10.length - 1] || {};
+
   const statusColorMap = {
     up: "bg-green-100",
     high_latency: "bg-yellow-100",
@@ -34,7 +30,6 @@ export default function SiteCard({
     down: "text-red-700",
   };
 
-  // Chart data
   const data = {
     labels: last10.map((r) => (r.time ? r.time.split(" ")[1] : "—")),
     datasets: [
@@ -63,38 +58,27 @@ export default function SiteCard({
     },
   };
 
-  // Format error based on status
   const formatError = (resp) => {
     if (!resp) return "N/A";
-
     if (site.status === "down") {
-      if (resp.error && resp.error.toLowerCase().includes("http")) {
-        return resp.error; // Already contains HTTP info
-      }
-      return resp.code && resp.code !== 0
-        ? `HTTP ${resp.code}`
-        : resp.error || "Unknown Error";
+      if (resp.error && resp.error.toLowerCase().includes("http")) return resp.error;
+      return resp.code && resp.code !== 0 ? `HTTP ${resp.code}` : resp.error || "Unknown Error";
     }
-
-    if (site.status === "high_latency") {
-      return "Slow Resonse";
-    }
-
+    if (site.status === "high_latency") return "Slow Response";
     return "N/A";
   };
 
-  // Status label
   const statusLabel =
-    site.status === "high_latency"
-      ? "UP (HIGH LATENCY)"
-      : site.status?.toUpperCase() || "N/A";
+    site.status === "high_latency" ? "UP (HIGH LATENCY)" : site.status?.toUpperCase() || "N/A";
+
+  const toggleNotifications = () => {
+    const newValue = !notificationsEnabled;
+    setNotificationsEnabled(newValue);
+    localStorage.setItem(`notify_${site.id}`, JSON.stringify(newValue));
+  };
 
   return (
-    <div
-      className={`p-4 rounded-lg shadow transition-colors ${
-        statusColorMap[site.status]
-      }`}
-    >
+    <div className={`p-4 rounded-lg shadow transition-colors ${statusColorMap[site.status]}`}>
       {/* Header */}
       <div className="flex justify-between items-center mb-2">
         <h3 className="font-semibold text-lg">{site.name}</h3>
@@ -111,21 +95,13 @@ export default function SiteCard({
       {/* Info */}
       <p className="text-sm text-gray-700 mb-1">{site.url}</p>
       <p className="text-sm mb-1">
-        Status:{" "}
-        <span className={`font-semibold ${textColorMap[site.status]}`}>
-          {statusLabel}
-        </span>
+        Status: <span className={`font-semibold ${textColorMap[site.status]}`}>{statusLabel}</span>
       </p>
       <p className="text-sm mb-1">Last Checked: {site.lastChecked ?? "—"}</p>
-      <p className="text-sm mb-1">
-        Response: {last.ms ? `${last.ms} ms` : "N/A"}
-      </p>
+      <p className="text-sm mb-1">Response: {last.ms ? `${last.ms} ms` : "N/A"}</p>
 
-      {/* Error details */}
       {site.status !== "up" && (
-        <p className="text-sm font-medium mb-2 text-red-700">
-          Error: {formatError(last)}
-        </p>
+        <p className="text-sm font-medium mb-2 text-red-700">Error: {formatError(last)}</p>
       )}
 
       {/* Chart */}
@@ -142,16 +118,12 @@ export default function SiteCard({
           Manual Check
         </button>
         <button
-          onClick={onToggleNotifications}
+          onClick={toggleNotifications}
           className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 transition ${
-            site.notifications_enabled
-              ? "bg-green-100 text-green-700"
-              : "bg-gray-200 text-gray-500"
+            notificationsEnabled ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-500"
           }`}
         >
-          {site.notifications_enabled
-            ? "🔔 Notifications ON"
-            : "🔕 Notifications OFF"}
+          {notificationsEnabled ? "🔔 Notifications ON" : "🔕 Notifications OFF"}
         </button>
       </div>
     </div>
