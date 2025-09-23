@@ -44,6 +44,8 @@ export default function AddEditSiteModal({ site, onClose, onSaved, apiBase }) {
     }
 
     try {
+      let siteId = site?.id;
+
       if (site) {
         // Edit existing site
         await axios.put(`${apiBase}/websites/${site.id}`, { name, url });
@@ -52,18 +54,15 @@ export default function AddEditSiteModal({ site, onClose, onSaved, apiBase }) {
         const res = await axios.post(`${apiBase}/websites`, {
           name,
           url,
-          auto_monitor: false,
+          auto_monitor: false, // global
           notifications_enabled: notificationsEnabled,
         });
-        // Save notifications for newly created site
-        if (res.data.id) {
-          localStorage.setItem(`notify_${res.data.id}`, JSON.stringify(notificationsEnabled));
-        }
+        if (res.data.id) siteId = res.data.id;
       }
 
       // Save per-site notification in localStorage
-      if (site?.id) {
-        localStorage.setItem(`notify_${site.id}`, JSON.stringify(notificationsEnabled));
+      if (siteId) {
+        localStorage.setItem(`notify_${siteId}`, JSON.stringify(notificationsEnabled));
       }
 
       toast.success(`Site ${site ? "updated" : "added"} successfully!`);

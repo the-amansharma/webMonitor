@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 
-export default function Topbar({ onAddClick, notifyDelay, setNotifyDelay, children }) {
-  const [showDelayInput, setShowDelayInput] = useState(false);
-  const [tempDelay, setTempDelay] = useState(notifyDelay);
+export default function Topbar({ onAddClick, children }) {
+  const [showSettings, setShowSettings] = useState(false);
   const [email, setEmail] = useState("");
 
   // Load email from localStorage on mount
@@ -11,16 +10,7 @@ export default function Topbar({ onAddClick, notifyDelay, setNotifyDelay, childr
     setEmail(storedEmail);
   }, []);
 
-  // Save delay to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem("notifyDelay", notifyDelay);
-  }, [notifyDelay]);
-
-  const saveDelay = () => {
-    setNotifyDelay(tempDelay);
-    setShowDelayInput(false);
-  };
-
+  // Save email to localStorage
   const saveEmail = () => {
     localStorage.setItem("notificationEmail", email);
     alert("Notification email saved!");
@@ -33,35 +23,17 @@ export default function Topbar({ onAddClick, notifyDelay, setNotifyDelay, childr
       <div className="flex items-center gap-4 relative">
         {children}
 
-        {/* Notification Delay & Email Button */}
+        {/* Email Notification Dropdown */}
         <div className="relative">
           <button
-            onClick={() => setShowDelayInput(!showDelayInput)}
+            onClick={() => setShowSettings(!showSettings)}
             className="px-3 py-1 rounded bg-yellow-100 text-yellow-800 text-sm"
           >
-            Notify Delay: {notifyDelay} min
+            E-mail Notification
           </button>
 
-          {showDelayInput && (
+          {showSettings && (
             <div className="absolute top-10 right-0 bg-white p-3 rounded shadow-lg z-50 w-56">
-              {/* Delay Input */}
-              <div className="flex items-center mb-2">
-                <input
-                  type="number"
-                  min={1}
-                  value={tempDelay}
-                  onChange={(e) => setTempDelay(Number(e.target.value))}
-                  className="border px-2 py-1 rounded w-20"
-                />
-                <span className="ml-1">min</span>
-                <button
-                  onClick={saveDelay}
-                  className="ml-2 px-2 py-1 bg-green-600 text-white rounded"
-                >
-                  Save
-                </button>
-              </div>
-
               {/* Email Input */}
               <div className="flex items-center gap-2">
                 <input

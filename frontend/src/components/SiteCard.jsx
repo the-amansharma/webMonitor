@@ -1,4 +1,4 @@
-import React, { useState, } from "react";
+import React, { useState, useEffect } from "react";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -15,6 +15,13 @@ export default function SiteCard({ site, onEdit, onDelete, onManualCheck }) {
   const [notificationsEnabled, setNotificationsEnabled] = useState(
     JSON.parse(localStorage.getItem(`notify_${site.id}`)) ?? site.notifications_enabled
   );
+
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  useEffect(() => {
+    const storedSound = localStorage.getItem("soundEnabled");
+    setSoundEnabled(storedSound === null ? true : storedSound === "true");
+  }, []);
 
   const last10 = site.responseHistory?.slice(-10) || [];
   const last = last10[last10.length - 1] || {};
@@ -77,16 +84,47 @@ export default function SiteCard({ site, onEdit, onDelete, onManualCheck }) {
     localStorage.setItem(`notify_${site.id}`, JSON.stringify(newValue));
   };
 
+  const handleManualCheck = () => {
+    onManualCheck(site);
+
+    // Trigger toast & email if notifications enabled
+    if (notificationsEnabled) {
+      const actorToast = `${site.name} manual check completed: ${statusLabel}`;
+      // Replace this with your toast library call
+      console.log("Actor Toast:", actorToast);
+
+      // Sound
+      if (soundEnabled) {
+        const audio = new Audio("/notification_sound.mp3"); // your sound file
+        audio.play();
+      }
+
+      // Email trigger (frontend can call backend endpoint)
+      const userEmail = localStorage.getItem("notificationEmail");
+      if (userEmail) {
+        fetch("/api/send-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: userEmail,
+            subject: `Site Alert: ${site.name}`,
+            body: `Manual check completed for ${site.name}. Status: ${statusLabel}`,
+          }),
+        });
+      }
+    }
+  };
+
   return (
     <div className={`p-4 rounded-lg shadow transition-colors ${statusColorMap[site.status]}`}>
       {/* Header */}
       <div className="flex justify-between items-center mb-2">
         <h3 className="font-semibold text-lg">{site.name}</h3>
         <div className="flex gap-2">
-          <button onClick={onEdit} className="text-blue-600 hover:underline">
+          <button onClick={() => onEdit(site)} className="text-blue-600 hover:underline">
             Edit
           </button>
-          <button onClick={onDelete} className="text-red-600 hover:underline">
+          <button onClick={() => onDelete(site)} className="text-red-600 hover:underline">
             Delete
           </button>
         </div>
@@ -112,7 +150,7 @@ export default function SiteCard({ site, onEdit, onDelete, onManualCheck }) {
       {/* Actions */}
       <div className="flex justify-between mt-3 text-sm">
         <button
-          onClick={onManualCheck}
+          onClick={handleManualCheck}
           className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
         >
           Manual Check

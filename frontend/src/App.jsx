@@ -9,6 +9,9 @@ import "react-toastify/dist/ReactToastify.css";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+// Track ongoing manual checks globally
+const manualCheckLocks = {};
+
 export default function App() {
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,13 +19,12 @@ export default function App() {
   const [editingSite, setEditingSite] = useState(null);
   const [autoMonitoring, setAutoMonitoring] = useState(true);
   const [intervalTime, setIntervalTime] = useState(60);
-  const [notifyDelay, setNotifyDelay] = useState(Number(localStorage.getItem("notifyDelay")) || 5);
-  const [soundOn, setSoundOn] = useState(false);
-  const [lastCheckTime, setLastCheckTime] = useState(0);
+  const [soundOn, setSoundOn] = useState(JSON.parse(localStorage.getItem("soundOn")) ?? false);
+  const [email, setEmail] = useState(localStorage.getItem("notificationEmail") || "");
 
   const audioRef = useRef(null);
 
-  // ---------------- Fetch Sites ----------------
+  // ---------------- Load Sites ----------------
   const loadSites = async () => {
     setLoading(true);
     try {
@@ -40,60 +42,65 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
-    loadSites();
-  }, []);
-
-  // ---------------- SSE Notifications ----------------
-  useEffect(() => {
-    const evtSource = new EventSource(`${API}/api/notifications/stream`);
-    evtSource.onmessage = (event) => {
-      const message = event.data;
-      toast.info(message, { autoClose: 5000 });
-    };
-    evtSource.onerror = (err) => {
-      console.error("SSE connection error:", err);
-      evtSource.close();
-    };
-    return () => evtSource.close();
-  }, []);
+  useEffect(() => loadSites(), []);
 
   // ---------------- Manual Check ----------------
-  const onManualCheck = async (id, manual = true) => {
+  const onManualCheck = async (id, showToast = true) => {
+    if (manualCheckLocks[id]) {
+      if (showToast) {
+        toast.info(`A manual check for ${sites.find((s) => s.id === id)?.name || "site"} is already running.`);
+      }
+      return;
+    }
+    manualCheckLocks[id] = true;
+
     try {
       const res = await axios.post(`${API}/api/check/${id}`);
       const updatedSite = res.data;
       updatedSite.notifications_enabled = JSON.parse(localStorage.getItem(`notify_${id}`)) ?? updatedSite.notifications_enabled;
+
       setSites((prev) => prev.map((site) => (site.id === id ? updatedSite : site)));
-      if (manual) toast.success("Manual check completed");
+
+      // Send email if site is down and notifications enabled
+      if (updatedSite.status === "down" && updatedSite.notifications_enabled && email) {
+        await axios.post(`${API}/api/notify`, {
+          siteId: updatedSite.id,
+          email,
+          message: `${updatedSite.name} is DOWN!`,
+        });
+      }
+
+      if (showToast) toast.success(`Manual check completed for ${updatedSite.name}`);
     } catch (err) {
       console.error("Manual check failed", err);
-      if (manual) toast.error("Manual check failed: " + err.message);
+      if (showToast) toast.error("Manual check failed: " + err.message);
+    } finally {
+      manualCheckLocks[id] = false;
     }
   };
 
   // ---------------- Auto Monitoring ----------------
   useEffect(() => {
     if (!autoMonitoring) return;
+
     const id = setInterval(async () => {
       try {
-        const now = Date.now();
-        if (now - lastCheckTime >= intervalTime * 1000) {
-          const currentSites = await axios.get(`${API}/api/websites`).then((r) => r.data);
-          await Promise.all(currentSites.map((s) => onManualCheck(s.id, false)));
-          setSites(currentSites);
-          setLastCheckTime(now);
-        }
+        const currentSites = await axios.get(`${API}/api/websites`).then((r) => r.data);
+        await Promise.all(currentSites.map((s) => onManualCheck(s.id, false))); // No toast per site
+        toast.success("Auto-monitor cycle complete"); // Only one toast
+        setSites(currentSites);
       } catch (err) {
         console.error("Auto-monitor failed", err);
         toast.error("Auto-monitor cycle failed");
       }
     }, intervalTime * 1000);
+
     return () => clearInterval(id);
-  }, [autoMonitoring, intervalTime, lastCheckTime]);
+  }, [autoMonitoring, intervalTime, email]);
 
   // ---------------- Sound Alert ----------------
   useEffect(() => {
+    localStorage.setItem("soundOn", JSON.stringify(soundOn));
     if (!audioRef.current) return;
     const downCount = sites.filter((s) => s.status === "down").length;
     if (soundOn && downCount > 0) {
@@ -118,7 +125,7 @@ export default function App() {
     await loadSites();
   };
 
-  // ---------------- Delete ----------------
+  // ---------------- Delete Site ----------------
   const onDelete = async (id) => {
     if (!confirm("Delete this site?")) return;
     try {
@@ -140,10 +147,11 @@ export default function App() {
     toast.success(`Notifications ${newValue ? "enabled" : "disabled"}`);
   };
 
-  // ---------------- Save Notify Delay ----------------
-  const saveNotifyDelay = (value) => {
-    setNotifyDelay(value);
-    localStorage.setItem("notifyDelay", value);
+  // ---------------- Save Email ----------------
+  const saveEmail = (emailInput) => {
+    setEmail(emailInput);
+    localStorage.setItem("notificationEmail", emailInput);
+    toast.success("Notification email saved!");
   };
 
   return (
@@ -151,17 +159,29 @@ export default function App() {
       <ToastContainer position="top-right" autoClose={3000} />
       <Sidebar />
       <div className="flex-1 p-6">
-        <Topbar onAddClick={openAdd} notifyDelay={notifyDelay} setNotifyDelay={saveNotifyDelay}>
+        <Topbar
+          onAddClick={openAdd}
+          notifyDelay={0}
+          setNotifyDelay={() => {}}
+          email={email}
+          setEmail={saveEmail}
+        >
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium">Auto Monitoring:</span>
             <button
               onClick={() => setAutoMonitoring(!autoMonitoring)}
-              className={`px-3 py-1 rounded-full text-sm font-medium ${autoMonitoring ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
+              className={`px-3 py-1 rounded-full text-sm font-medium ${
+                autoMonitoring ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+              }`}
             >
               {autoMonitoring ? "ON" : "OFF"}
             </button>
             {autoMonitoring && (
-              <select value={intervalTime} onChange={(e) => setIntervalTime(Number(e.target.value))} className="border rounded px-2 py-1 text-sm">
+              <select
+                value={intervalTime}
+                onChange={(e) => setIntervalTime(Number(e.target.value))}
+                className="border rounded px-2 py-1 text-sm"
+              >
                 <option value={30}>30s</option>
                 <option value={60}>1m</option>
                 <option value={300}>5m</option>
@@ -173,7 +193,9 @@ export default function App() {
             <span className="text-sm font-medium">Sound Alert:</span>
             <button
               onClick={() => setSoundOn(!soundOn)}
-              className={`px-3 py-1 rounded-full text-sm font-medium ${soundOn ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-600"}`}
+              className={`px-3 py-1 rounded-full text-sm font-medium ${
+                soundOn ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-600"
+              }`}
             >
               {soundOn ? "ON" : "OFF"}
             </button>
@@ -184,82 +206,7 @@ export default function App() {
           <source src="/alert.mp3" type="audio/mpeg" />
         </audio>
 
-        {/* Dashboard Cards */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="p-4 bg-white rounded-lg shadow-sm">
-            <div className="text-sm text-slate-500">Total Sites</div>
-            <div className="mt-2 text-3xl font-semibold">{sites.length}</div>
-          </div>
-          <div className="p-4 bg-white rounded-lg shadow-sm">
-            <div className="text-sm text-slate-500">Sites Down</div>
-            <div className="mt-2 text-3xl font-semibold">{sites.filter((s) => s.status === "down").length}</div>
-          </div>
-          <div className="p-4 bg-white rounded-lg shadow-sm">
-            <div className="text-sm text-slate-500">Slowest Site</div>
-            <div className="mt-2 text-3xl font-semibold">
-              {sites.length === 0
-                ? "—"
-                : sites.reduce((slowest, s) => {
-                    const avg = s.responseHistory?.length
-                      ? s.responseHistory.reduce((a, r) => a + r.ms, 0) / s.responseHistory.length
-                      : 0;
-                    return avg > (slowest.avg || 0) ? { name: s.name, avg } : slowest;
-                  }, {}).name || "—"}
-            </div>
-          </div>
-          <div className="p-4 bg-white rounded-lg shadow-sm">
-            <div className="text-sm text-slate-500">Avg Response Time</div>
-            <div className="mt-2 text-3xl font-semibold">
-              {sites.length === 0
-                ? "—"
-                : `${(
-                    sites.reduce((total, s) => {
-                      const avg = s.responseHistory?.length
-                        ? s.responseHistory.reduce((a, r) => a + r.ms, 0) / s.responseHistory.length
-                        : 0;
-                      return total + avg;
-                    }, 0) / sites.length /
-                    1000
-                  ).toFixed(2)} s`}
-            </div>
-          </div>
-        </div>
-
-        {/* Sites Down Table */}
-        {sites.some((s) => s.status === "down") && (
-          <div className="mt-6 bg-red-50 p-4 rounded-xl shadow border-l-4 border-red-500">
-            <h2 className="text-lg font-semibold text-red-700 mb-3">Sites Down</h2>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-gray-600">
-                  <th className="text-left py-1">Site</th>
-                  <th className="text-left py-1">URL</th>
-                  <th className="text-left py-1">Last Checked</th>
-                  <th className="text-left py-1">Response Time</th>
-                  <th className="text-left py-1">Error</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sites
-                  .filter((s) => s.status === "down")
-                  .map((s) => {
-                    const last = s.responseHistory?.slice(-1)[0] || {};
-                    return (
-                      <tr key={s.id} className="border-t">
-                        <td>{s.name}</td>
-                        <td>{s.url}</td>
-                        <td>{s.lastChecked ?? "—"}</td>
-                        <td>{last.ms ? `${last.ms} ms` : "—"}</td>
-                        <td>{last.code && last.code !== 0 ? `(${last.error})` : last.error || "N/A"}</td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Site Cards */}
+        {/* Sites Cards */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {loading && <div className="text-slate-500">Loading...</div>}
           {!loading &&
@@ -284,9 +231,8 @@ export default function App() {
                   site={site}
                   onEdit={() => openEdit(site)}
                   onDelete={() => onDelete(site.id)}
-                  onManualCheck={() => onManualCheck(site.id, true)}
+                  onManualCheck={() => onManualCheck(site.id)}
                   onToggleNotifications={() => onToggleNotifications(site)}
-                  lastResponse={site.responseHistory?.slice(-1)[0] || {}}
                 />
               ))}
         </div>
