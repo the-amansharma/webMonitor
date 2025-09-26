@@ -18,7 +18,7 @@ import logging
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = "/opt/render"
 DATA_FILE = os.path.join(BASE_DIR, "websites.json")
 lock = Lock()
 manual_locks = {}  # Per-site lock for manual checks
