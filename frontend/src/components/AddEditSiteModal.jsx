@@ -5,19 +5,16 @@ import { toast } from "react-toastify";
 export default function AddEditSiteModal({ site, onClose, onSaved, apiBase }) {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [saving, setSaving] = useState(false);
   const nameRef = useRef(null);
 
   useEffect(() => {
     if (site) {
       setName(site.name);
       setUrl(site.url);
-      const savedNotify = JSON.parse(localStorage.getItem(`notify_${site.id}`));
-      setNotificationsEnabled(savedNotify ?? site.notifications_enabled);
     } else {
       setName("");
       setUrl("");
-      setNotificationsEnabled(false);
     }
 
     // Auto-focus the name field
@@ -44,38 +41,37 @@ export default function AddEditSiteModal({ site, onClose, onSaved, apiBase }) {
     }
 
     try {
-      let siteId = site?.id;
+      setSaving(true); // Show loader
 
       if (site) {
         // Edit existing site
-        await axios.put(`${apiBase}/websites/${site.id}`, { name, url });
+        await axios.put(`${apiBase}websites/${site.id}`, { name, url });
       } else {
         // Add new site
-        const res = await axios.post(`${apiBase}/websites`, {
-          name,
-          url,
-          auto_monitor: false, // global
-          notifications_enabled: notificationsEnabled,
-        });
-        if (res.data.id) siteId = res.data.id;
-      }
-
-      // Save per-site notification in localStorage
-      if (siteId) {
-        localStorage.setItem(`notify_${siteId}`, JSON.stringify(notificationsEnabled));
+        await axios.post(`${apiBase}websites`, { name, url });
       }
 
       toast.success(`Site ${site ? "updated" : "added"} successfully!`);
-      onSaved();
+      onSaved(); // Refresh parent site list
+      onClose();  // Close modal AFTER save finishes
     } catch (err) {
       console.error(err.response || err);
       toast.error("Error saving site: " + (err.response?.data?.error || err.message));
+    } finally {
+      setSaving(false); // Stop loader
     }
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-96 shadow-lg animate-fade-in">
+      <div className="bg-white rounded-lg p-6 w-96 shadow-lg animate-fade-in relative">
+        {/* Optional overlay while saving */}
+        {saving && (
+          <div className="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center rounded-lg z-10">
+            <span className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></span>
+          </div>
+        )}
+
         <h2 className="text-lg font-semibold mb-4">{site ? "Edit Site" : "Add Site"}</h2>
         <form onSubmit={onSubmit} className="flex flex-col gap-3">
           <input
@@ -95,28 +91,24 @@ export default function AddEditSiteModal({ site, onClose, onSaved, apiBase }) {
             className="border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
             required
           />
-          {/* Notification toggle */}
-          <label className="flex items-center gap-2 mt-2">
-            <input
-              type="checkbox"
-              checked={notificationsEnabled}
-              onChange={(e) => setNotificationsEnabled(e.target.checked)}
-              className="accent-green-600"
-            />
-            Enable Notifications for this site
-          </label>
+
           <div className="flex justify-end gap-2 mt-4">
             <button
               type="button"
               onClick={onClose}
               className="px-4 py-2 rounded border hover:bg-gray-100"
+              disabled={saving}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+              className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 flex items-center justify-center gap-2"
+              disabled={saving}
             >
+              {saving && (
+                <span className="w-5 h-5 border-4 border-white border-t-transparent rounded-full animate-spin"></span>
+              )}
               Save
             </button>
           </div>

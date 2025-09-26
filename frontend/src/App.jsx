@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
+import Cookies from "js-cookie";
 import Sidebar from "./components/Sidebar";
 import Topbar from "./components/Topbar";
 import AddEditSiteModal from "./components/AddEditSiteModal";
@@ -18,9 +19,12 @@ export default function App() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSite, setEditingSite] = useState(null);
   const [autoMonitoring, setAutoMonitoring] = useState(true);
-  const [intervalTime, setIntervalTime] = useState(60);
-  const [soundOn, setSoundOn] = useState(JSON.parse(localStorage.getItem("soundOn")) ?? false);
-  const [email, setEmail] = useState(localStorage.getItem("notificationEmail") || "");
+  const [intervalTime, setIntervalTime] = useState(
+    Number(localStorage.getItem("autoMonitorInterval")) || 60
+  );
+  const [soundOn, setSoundOn] = useState(
+    JSON.parse(localStorage.getItem("soundOn")) ?? false
+  );
 
   const audioRef = useRef(null);
 
@@ -28,10 +32,10 @@ export default function App() {
   const loadSites = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API}websites`);
+      const res = await axios.get(`${API}/websites`);
       const mergedSites = res.data.map((s) => ({
         ...s,
-        notifications_enabled: JSON.parse(localStorage.getItem(`notify_${s.id}`)) ?? s.notifications_enabled,
+        notifications_enabled: Cookies.get(`notify_${s.id}`) === "true" || false,
       }));
       setSites(mergedSites);
     } catch (err) {
@@ -46,33 +50,20 @@ export default function App() {
 
   // ---------------- Manual Check ----------------
   const onManualCheck = async (id, showToast = true) => {
-    if (manualCheckLocks[id]) {
-      if (showToast) {
-        toast.info(`A manual check for ${sites.find((s) => s.id === id)?.name || "site"} is already running.`);
-      }
-      return;
-    }
+    if (manualCheckLocks[id]) return;
     manualCheckLocks[id] = true;
 
     try {
-      const res = await axios.post(`${API}check/${id}`);
+      const res = await axios.post(`${API}/check/${id}`, {}, { withCredentials: true });
+
       const updatedSite = res.data;
-      updatedSite.notifications_enabled = JSON.parse(localStorage.getItem(`notify_${id}`)) ?? updatedSite.notifications_enabled;
+      setSites((prev) =>
+        prev.map((site) => (site.id === id ? updatedSite : site))
+      );
 
-      setSites((prev) => prev.map((site) => (site.id === id ? updatedSite : site)));
-
-      // Send email if site is down and notifications enabled
-      if (updatedSite.status === "down" && updatedSite.notifications_enabled && email) {
-        await axios.post(`${API}notify`, {
-          siteId: updatedSite.id,
-          email,
-          message: `${updatedSite.name} is DOWN!`,
-        });
-      }
-
-      if (showToast) toast.success(`Manual check completed for ${updatedSite.name}`);
+      if (showToast)
+        toast.success(`Manual check completed for ${updatedSite.name}`);
     } catch (err) {
-      console.error("Manual check failed", err);
       if (showToast) toast.error("Manual check failed: " + err.message);
     } finally {
       manualCheckLocks[id] = false;
@@ -85,10 +76,16 @@ export default function App() {
 
     const id = setInterval(async () => {
       try {
-        const currentSites = await axios.get(`${API}websites`).then((r) => r.data);
-        await Promise.all(currentSites.map((s) => onManualCheck(s.id, false))); // No toast per site
-        toast.success("Auto-monitor cycle complete"); // Only one toast
-        setSites(currentSites);
+        const currentSites = await axios.get(`${API}/websites`).then((r) => r.data);
+
+        await Promise.all(currentSites.map((s) => onManualCheck(s.id, false)));
+
+        setSites(
+          currentSites.map((s) => ({
+            ...s,
+            notifications_enabled: Cookies.get(`notify_${s.id}`) === "true" || false,
+          }))
+        );
       } catch (err) {
         console.error("Auto-monitor failed", err);
         toast.error("Auto-monitor cycle failed");
@@ -96,12 +93,13 @@ export default function App() {
     }, intervalTime * 1000);
 
     return () => clearInterval(id);
-  }, [autoMonitoring, intervalTime, email]);
+  }, [autoMonitoring, intervalTime]);
 
   // ---------------- Sound Alert ----------------
   useEffect(() => {
     localStorage.setItem("soundOn", JSON.stringify(soundOn));
     if (!audioRef.current) return;
+
     const downCount = sites.filter((s) => s.status === "down").length;
     if (soundOn && downCount > 0) {
       audioRef.current.play().catch((err) => console.error("Audio play failed:", err));
@@ -129,8 +127,8 @@ export default function App() {
   const onDelete = async (id) => {
     if (!confirm("Delete this site?")) return;
     try {
-      await axios.delete(`${API}websites/${id}`);
-      localStorage.removeItem(`notify_${id}`);
+      await axios.delete(`${API}/websites/${id}`);
+      Cookies.remove(`notify_${id}`);
       setSites((prev) => prev.filter((s) => s.id !== id));
       toast.success("Site deleted successfully");
     } catch (err) {
@@ -142,16 +140,18 @@ export default function App() {
   // ---------------- Toggle Notifications ----------------
   const onToggleNotifications = (site) => {
     const newValue = !site.notifications_enabled;
-    localStorage.setItem(`notify_${site.id}`, JSON.stringify(newValue));
-    setSites((prev) => prev.map((s) => (s.id === site.id ? { ...s, notifications_enabled: newValue } : s)));
+    Cookies.set(`notify_${site.id}`, newValue, { expires: 30 });
+    setSites((prev) =>
+      prev.map((s) =>
+        s.id === site.id ? { ...s, notifications_enabled: newValue } : s
+      )
+    );
     toast.success(`Notifications ${newValue ? "enabled" : "disabled"}`);
   };
 
-  // ---------------- Save Email ----------------
-  const saveEmail = (emailInput) => {
-    setEmail(emailInput);
-    localStorage.setItem("notificationEmail", emailInput);
-    toast.success("Notification email saved!");
+  const setGlobalInterval = (val) => {
+    setIntervalTime(val);
+    localStorage.setItem("autoMonitorInterval", val);
   };
 
   return (
@@ -159,13 +159,7 @@ export default function App() {
       <ToastContainer position="top-right" autoClose={3000} />
       <Sidebar />
       <div className="flex-1 p-6">
-        <Topbar
-          onAddClick={openAdd}
-          notifyDelay={0}
-          setNotifyDelay={() => {}}
-          email={email}
-          setEmail={saveEmail}
-        >
+        <Topbar onAddClick={openAdd}>
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium">Auto Monitoring:</span>
             <button
@@ -179,7 +173,7 @@ export default function App() {
             {autoMonitoring && (
               <select
                 value={intervalTime}
-                onChange={(e) => setIntervalTime(Number(e.target.value))}
+                onChange={(e) => setGlobalInterval(Number(e.target.value))}
                 className="border rounded px-2 py-1 text-sm"
               >
                 <option value={30}>30s</option>
@@ -203,26 +197,21 @@ export default function App() {
         </Topbar>
 
         <audio ref={audioRef} loop>
-          <source src="/alert.mp3" type="audio/mpeg" />
+          <source src="/alertNew.wav" type="audio/mpeg" />
         </audio>
 
         {/* Summary Cards */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Total Sites */}
           <div className="p-4 bg-white rounded-lg shadow-sm">
             <div className="text-sm text-slate-500">Total Sites</div>
             <div className="mt-2 text-3xl font-semibold">{sites.length}</div>
           </div>
-
-          {/* Sites Down */}
           <div className="p-4 bg-white rounded-lg shadow-sm">
             <div className="text-sm text-slate-500">Sites Down</div>
             <div className="mt-2 text-3xl font-semibold">
               {sites.filter((s) => s.status === "down").length}
             </div>
           </div>
-
-          {/* Slowest Site */}
           <div className="p-4 bg-white rounded-lg shadow-sm">
             <div className="text-sm text-slate-500">Slowest Site</div>
             <div className="mt-2 text-3xl font-semibold">
@@ -230,8 +219,7 @@ export default function App() {
                 ? "—"
                 : sites.reduce((slowest, s) => {
                     const avg = s.responseHistory?.length
-                      ? s.responseHistory.reduce((a, r) => a + r.ms, 0) /
-                        s.responseHistory.length
+                      ? s.responseHistory.reduce((a, r) => a + r.ms, 0) / s.responseHistory.length
                       : 0;
                     return avg > (slowest.avg || 0)
                       ? { name: s.name, avg }
@@ -239,8 +227,6 @@ export default function App() {
                   }, {}).name || "—"}
             </div>
           </div>
-
-          {/* Average Response Time */}
           <div className="p-4 bg-white rounded-lg shadow-sm">
             <div className="text-sm text-slate-500">Avg Response Time</div>
             <div className="mt-2 text-3xl font-semibold">
@@ -249,8 +235,7 @@ export default function App() {
                 : `${(
                     sites.reduce((total, s) => {
                       const avg = s.responseHistory?.length
-                        ? s.responseHistory.reduce((a, r) => a + r.ms, 0) /
-                          s.responseHistory.length
+                        ? s.responseHistory.reduce((a, r) => a + r.ms, 0) / s.responseHistory.length
                         : 0;
                       return total + avg;
                     }, 0) /
@@ -260,7 +245,6 @@ export default function App() {
             </div>
           </div>
         </div>
-        {/* Summary Cards End */}
 
         {/* Sites Down Alerts */}
         {sites.some((s) => s.status === "down") && (
@@ -301,8 +285,6 @@ export default function App() {
             </table>
           </div>
         )}
-       { /* site alerts end */}
-
 
         {/* Sites Cards */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -340,7 +322,7 @@ export default function App() {
             site={editingSite}
             onClose={() => setModalOpen(false)}
             onSaved={onSaved}
-            apiBase={`${API}`}
+            apiBase={`${API}/`}
           />
         )}
       </div>
